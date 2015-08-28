@@ -8,6 +8,7 @@ from .. import utils
 
 __all__ = [
     "get_all_layers",
+    "get_layer",
     "get_output",
     "get_output_shape",
     "get_all_params",
@@ -103,6 +104,63 @@ def get_all_layers(layer, treat_as_input=None):
                 done.add(layer)
 
     return result
+
+
+def get_layer(layer, name, treat_as_input=None):
+    """
+    This function returns all layers with the given :obj:`name` below the one
+    or more given :class:`Layer` instances, including the given layer(s). Its
+    main use is to collect a subset of the network layers just given the
+    output layer and .
+
+    Parameters
+    ----------
+    layer : Layer or list
+        the :class:`Layer` instance for which to gather all layers feeding
+        into it, or a list of :class:`Layer` instances.
+
+    name : str or list
+        the name(s) of the layer(s) to search for.
+
+    treat_as_input : None or iterable
+        an iterable of :class:`Layer` instances to treat as input layers
+        with no layers feeding into them. They will show up in the result
+        list, but their incoming layers will not be collected (unless they
+        are required for other layers as well).
+
+    Returns
+    -------
+    list
+        a list of :class:`Layer` instances feeding into the given instance(s)
+        either directly or indirectly, and the given instance(s) themselves,
+        that have the given name in topological order.
+
+    Examples
+    --------
+    >>> from lasagne.layers import InputLayer, DenseLayer
+    >>> l_in = InputLayer((100, 20), name="input")
+    >>> l1 = DenseLayer(l_in, num_units=50, name="dense")
+    >>> get_layer(l1, "input") == [l_in]
+    True
+    >>> l2 = DenseLayer(l_in, num_units=10, name="dense")
+    >>> get_layer([l2, l1], "dense") == [l2, l1]
+    True
+    >>> l3 = DenseLayer(l2, num_units=20, name="out")
+    >>> get_layer(l3, "dense") == [l2]
+    True
+    >>> get_layer(l3, ["dense", "input"]) == [l_in, l2]
+    True
+    >>> get_layer(l3, ["dense", "input"], treat_as_input=[l2]) == [l2]
+    True
+    """
+    if isinstance(name, str):
+        names = set([name])
+    else:
+        names = set(name)
+
+    return [layer 
+            for layer in get_all_layers(layer, treat_as_input)
+            if layer.name in names]
 
 
 def get_output(layer_or_layers, inputs=None, **kwargs):
